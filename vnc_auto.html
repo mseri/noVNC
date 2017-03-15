@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
     <!--
@@ -38,28 +39,31 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="app/styles/auto.css">
 
-     <!--
+    <!--
     <script type='text/javascript'
         src='http://getfirebug.com/releases/lite/1.2/firebug-lite-compressed.js'></script>
     -->
-        <script src="core/util.js"></script>
-        <script src="app/webutil.js"></script>
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
-	<script src="jquery.jsonrpc.js"></script>
+    <script src="core/util.js"></script>
+    <script src="app/webutil.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="jquery.jsonrpc.js"></script>
 
 </head>
 
 <body style="margin: 0px;">
     <div id="noVNC_container">
-            <div id="noVNC_status_bar" class="noVNC_status_bar" style="margin-top: 0px;">
-                <table border=0 width="100%"><tr>
-                    <td><div id="noVNC_status" style="position: relative; height: auto;">
-                        Loading
-                    </div></td>
-                    <td width="1%"><div id="noVNC_buttons">
-                        <input type=button value="Send CtrlAltDel"
-                            id="sendCtrlAltDelButton">
-                        <span id="noVNC_xvp_buttons">
+        <div id="noVNC_status_bar" class="noVNC_status_bar" style="margin-top: 0px;">
+            <table border=0 width="100%">
+                <tr>
+                    <td>
+                        <div id="noVNC_status" style="position: relative; height: auto;">
+                            Loading
+                        </div>
+                    </td>
+                    <td width="1%">
+                        <div id="noVNC_buttons">
+                            <input type=button value="Send CtrlAltDel" id="sendCtrlAltDelButton">
+                            <span id="noVNC_xvp_buttons">
                         <input type=button value="Shutdown"
                             id="xvpShutdownButton">
                         <input type=button value="Reboot"
@@ -67,15 +71,19 @@
                         <input type=button value="Reset"
                             id="xvpResetButton">
                         </span>
-                            </div></td>
-                </tr></table>
-            </div>
-            <canvas id="noVNC_canvas" width="640px" height="20px">
-                Canvas not supported.
-            </canvas>
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </div>
+        <canvas id="noVNC_canvas" width="640px" height="20px">
+            Canvas not supported.
+        </canvas>
+        <div id="consoles_list">
+        </div>
+    </div>
 
-        <script>
+    <script>
         /*jslint white: false */
         /*global window, $, Util, RFB, */
         "use strict";
@@ -83,14 +91,15 @@
         // Load supporting scripts
         WebUtil.load_scripts({
             'core': ["base64.js", "websock.js", "des.js", "input/keysymdef.js",
-                     "input/xtscancodes.js", "input/util.js", "input/devices.js",
-                     "display.js", "inflator.js", "rfb.js", "input/keysym.js"]});
+                "input/xtscancodes.js", "input/util.js", "input/devices.js",
+                "display.js", "inflator.js", "rfb.js", "input/keysym.js"]
+        });
 
         var rfb;
         var resizeTimeout;
         var desktopName;
-	var host;
-	var session_id;
+        var host;
+        var session_id;
 
         function UIresize() {
             if (WebUtil.getConfigVar('resize', false)) {
@@ -103,7 +112,7 @@
         }
         function FBUComplete(rfb, fbu) {
             UIresize();
-            rfb.set_onFBUComplete(function() { });
+            rfb.set_onFBUComplete(function () { });
         }
         function updateDesktopName(rfb, name) {
             desktopName = name;
@@ -165,10 +174,10 @@
                 case 'connected':
                     if (rfb && rfb.get_encrypt()) {
                         status("Connected (encrypted) to " +
-                               desktopName, "normal");
+                            desktopName, "normal");
                     } else {
                         status("Connected (unencrypted) to " +
-                               desktopName, "normal");
+                            desktopName, "normal");
                     }
                     break;
                 case 'disconnecting':
@@ -191,7 +200,7 @@
 
         }
         function disconnected(rfb, reason) {
-            if (typeof(reason) !== 'undefined') {
+            if (typeof (reason) !== 'undefined') {
                 status(reason, "error");
             }
         }
@@ -204,7 +213,7 @@
             // the same for 0.5 seconds before sending the request for changing
             // the resolution of the session
             clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(function(){
+            resizeTimeout = setTimeout(function () {
                 UIresize();
             }, 500);
         };
@@ -229,40 +238,54 @@
             WebUtil.init_logging(WebUtil.getConfigVar('logging', 'warn'));
             document.title = unescape(WebUtil.getConfigVar('title', 'noVNC'));
             // By default, use the host and port of server that served this file
-            host = WebUtil.getConfigVar('host','');
+            host = WebUtil.getConfigVar('host', '');
+            var session_id = "";
 
-	    $.jsonRPC.setup({
-	      endPoint: 'http://'+host+'/jsonrpc'
-	    });
+            $.jsonRPC.setup({
+                endPoint: 'http://' + host + '/jsonrpc'
+            });
 
-	    $.jsonRPC.request('session.login_with_password', {
-	    params: ['root','xenroot'],
-	    success: function(result) { session_id=result.result; openvnc(WebUtil.getConfigVar('console_uuid','')) },
-	    error: function(result) {window.myerror=result; console.log("error: "+result)}});
+            $.jsonRPC.request('session.login_with_password', {
+                params: ['root', 'xenroot'],
+                success: function (result) {
+                    session_id = result.result;
+                    openvnc(WebUtil.getConfigVar('console_uuid', ''));
+                },
+                error: function (result) { window.myerror = result; console.log("error: " + result) }
+            });
 
-	}
+            $.jsonRPC.request('VM.get_all_records_where', {
+                params: [session_id, 'field "is_a_template" = "false"'],
+                success: function (result) {
+                    vms = result.result;
+                    populateConsoles(vms);
+                },
+                error: function (result) { console.log("error: while getting vm records"); console.log(result); }
+            });
+        }
 
-	      
-	function openvnc(console_uuid ) {
-	    var path;
-	    path = "console?uuid="+console_uuid+"&session_id="+session_id;
-	      
+        function openvnc(console_uuid) {
+            var path;
+            path = "console?uuid=" + console_uuid + "&session_id=" + session_id;
+
             try {
-                rfb = new RFB({'target':       document.getElementById('noVNC_canvas'),
-                               'encrypt':      WebUtil.getConfigVar('encrypt',
-                                        (window.location.protocol === "https:")),
-                               'repeaterID':   WebUtil.getConfigVar('repeaterID', ''),
-                               'true_color':   WebUtil.getConfigVar('true_color', true),
-                               'local_cursor': WebUtil.getConfigVar('cursor', true),
-                               'shared':       WebUtil.getConfigVar('shared', true),
-                               'view_only':    WebUtil.getConfigVar('view_only', false),
-                               'onNotification':  notification,
-                               'onUpdateState':  updateState,
-                               'onDisconnected': disconnected,
-                               'onXvpInit':    xvpInit,
-                               'onPasswordRequired':  passwordRequired,
-                               'onFBUComplete': FBUComplete,
-                               'onDesktopName': updateDesktopName});
+                rfb = new RFB({
+                    'target': document.getElementById('noVNC_canvas'),
+                    'encrypt': WebUtil.getConfigVar('encrypt',
+                        (window.location.protocol === "https:")),
+                    'repeaterID': WebUtil.getConfigVar('repeaterID', ''),
+                    'true_color': WebUtil.getConfigVar('true_color', true),
+                    'local_cursor': WebUtil.getConfigVar('cursor', true),
+                    'shared': WebUtil.getConfigVar('shared', true),
+                    'view_only': WebUtil.getConfigVar('view_only', false),
+                    'onNotification': notification,
+                    'onUpdateState': updateState,
+                    'onDisconnected': disconnected,
+                    'onXvpInit': xvpInit,
+                    'onPasswordRequired': passwordRequired,
+                    'onFBUComplete': FBUComplete,
+                    'onDesktopName': updateDesktopName
+                });
             } catch (exc) {
                 status('Unable to create RFB client -- ' + exc, 'error');
                 return; // don't continue trying to connect
@@ -270,7 +293,50 @@
 
             rfb.connect(host, 80, "", path);
         };
-        </script>
 
-    </body>
+        function addConsoleLink(vmRef, vmConsole, consoleUuid) {
+            var searchParams = new URLSearchParams(document.location.search);
+            var hostParam = searchParams.get('host');
+            var baseurl = document.location.origin + document.location.pathname + '?host=' + hostParam + '&';
+
+            var vmDiv = document.getElementById(vmRef);
+            var aCs = document.createElement('a');
+            var aTxt = document.createTextNode(vmConsole + "; ");
+            aCs.appendChild(aTxt);
+            var href = baseurl + 'console_uuid=' + consoleUuid;
+            aCs.setAttribute('href', href);
+            vmDiv.appendChild(aCs);
+        };
+
+        function populateConsoles(vms) {
+            var consolesDiv = document.getElementById('consoles_list');
+            consolesDiv.innerHTML = "";
+            for (var vmRef in vms) {
+                var vm = vms[vmRef];
+                var consoles = vm['consoles'];
+                var name = vm['name_label'];
+
+                var vmDiv = document.createElement('div');
+                vmDiv.setAttribute('id', vmRef);
+                var vmDivCt = document.createTextNode(name + ' consoles: ');
+                vmDiv.appendChild(vmDivCt);
+                consolesDiv.appendChild(vmDiv);
+                var vmBr = document.createElement('br');
+                consolesDiv.appendChild(vmBr);
+
+                consoles.forEach(function (vmConsole) {
+                    $.jsonRPC.request('console.get_uuid', {
+                        params: [session_id, vmConsole],
+                        success: function (result) {
+                            addConsoleLink(vmRef, vmConsole, result.result);
+                        },
+                        error: function (result) { console.log('error: unable to get uuid for console ' + vmConsole); }
+                    });
+                });
+            }
+        };
+    </script>
+
+</body>
+
 </html>
