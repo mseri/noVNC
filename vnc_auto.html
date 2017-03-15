@@ -79,10 +79,9 @@
         <canvas id="noVNC_canvas" width="640px" height="20px">
             Canvas not supported.
         </canvas>
-        <div id="consoles_list">
-        </div>
     </div>
-
+    <div id="consoles_list" style="background: slategrey; margin-top: 5px;">
+    </div>
     <script>
         /*jslint white: false */
         /*global window, $, Util, RFB, */
@@ -248,23 +247,23 @@
             $.jsonRPC.request('session.login_with_password', {
                 params: ['root', 'xenroot'],
                 success: function (result) {
-                    session_id = result.result;
-                    openvnc(WebUtil.getConfigVar('console_uuid', ''));
+                    var session_id = result.result;
+                    openvnc(WebUtil.getConfigVar('console_uuid', ''), session_id);
+
+                    $.jsonRPC.request('VM.get_all_records_where', {
+                        params: [session_id, 'field "is_a_template" = "false"'],
+                        success: function (result) {
+                            var vms = result.result;
+                            populateConsoles(session_id, vms);
+                        },
+                        error: function (result) { console.log("error: while getting vm records"); console.log(result); }
+                    });
                 },
                 error: function (result) { window.myerror = result; console.log("error: " + result) }
             });
-
-            $.jsonRPC.request('VM.get_all_records_where', {
-                params: [session_id, 'field "is_a_template" = "false"'],
-                success: function (result) {
-                    vms = result.result;
-                    populateConsoles(vms);
-                },
-                error: function (result) { console.log("error: while getting vm records"); console.log(result); }
-            });
         }
 
-        function openvnc(console_uuid) {
+        function openvnc(console_uuid, session_id) {
             var path;
             path = "console?uuid=" + console_uuid + "&session_id=" + session_id;
 
@@ -294,7 +293,7 @@
             rfb.connect(host, 80, "", path);
         };
 
-        function addConsoleLink(vmRef, vmConsole, consoleUuid) {
+        function addConsoleLink(session_id, vmRef, vmConsole, consoleUuid) {
             var searchParams = new URLSearchParams(document.location.search);
             var hostParam = searchParams.get('host');
             var baseurl = document.location.origin + document.location.pathname + '?host=' + hostParam + '&';
@@ -306,9 +305,10 @@
             var href = baseurl + 'console_uuid=' + consoleUuid;
             aCs.setAttribute('href', href);
             vmDiv.appendChild(aCs);
+            console.log(vmDiv);
         };
 
-        function populateConsoles(vms) {
+        function populateConsoles(session_id, vms) {
             var consolesDiv = document.getElementById('consoles_list');
             consolesDiv.innerHTML = "";
             for (var vmRef in vms) {
@@ -324,11 +324,15 @@
                 var vmBr = document.createElement('br');
                 consolesDiv.appendChild(vmBr);
 
-                consoles.forEach(function (vmConsole) {
+                consoles.map(
+                    function (c) {return {cons: c, vm: vmRef};}
+                ).forEach(function (o) {
+                    var vmConsole = o.cons;
+                    var vmRef = o.vm;
                     $.jsonRPC.request('console.get_uuid', {
                         params: [session_id, vmConsole],
                         success: function (result) {
-                            addConsoleLink(vmRef, vmConsole, result.result);
+                            addConsoleLink(session_id, vmRef, vmConsole, result.result);
                         },
                         error: function (result) { console.log('error: unable to get uuid for console ' + vmConsole); }
                     });
